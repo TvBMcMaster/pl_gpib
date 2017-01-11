@@ -168,7 +168,12 @@ class GPIBController(object):
         return resp.strip()
 
     def query_address(self):
-        """Query the current GPIB address set on the controller."""
+        """
+        Query the current GPIB address set on the controller.
+
+        Returns:
+            The integer address currently set on the controller or None
+        """
         self.write('++addr')
         address = self.read(10)
         if address is not None:
@@ -177,13 +182,26 @@ class GPIBController(object):
         return address
 
     def set_address(self, address):
-        """Set the current GPIB address of the controller."""
+        """
+        Set the current GPIB address of the controller.
+
+        Args:
+            address:  The address to set, must be convertable to an integer
+        """
         address = int(address)  # This forces only primary addresses
         self.write('++addr {}'.format(address))
         self.address = address
 
-    def query_mode(self, mode):
-        """Query the controller mode."""
+    def query_mode(self):
+        """
+        Query the controller mode.
+
+        DEVICE: 0
+        CONTROLLER: 1
+
+        Returns:
+            The mode integer the device is currently set as.  0 or 1
+        """
         self.write('++mode')
         mode = self.read(1)
         if mode is not None:
@@ -192,7 +210,16 @@ class GPIBController(object):
         return mode
 
     def set_mode(self, mode):
-        """Set the controller mode."""
+        """
+        Set the controller mode.
+
+        DEVICE: 0
+        CONTROLLER: 1
+
+        Args:
+            mode: The integer mode to set the device.
+
+        """
         mode = int(mode)  # Force to int
         self.write("++mode {}".format(mode))
         self.mode = mode
