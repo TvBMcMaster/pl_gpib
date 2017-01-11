@@ -21,19 +21,11 @@ class GPIBController(object):
     The class allows for many instruments to be added.  Each instrument must
     be a subclass of the GPIBInstrument object.
 
-    Args:
-        port: The port to communicate with the serial device (ie
-            '/dev/ttyUSB0' on Linux or 'COM1' on Windows).
-        mode: Set the initial mode bit.  Accepts either 0 (DEVICE) or
-            1 (CONTROLLER).  Defaults to 1.
-        connection:  Optionally pass a serial object to communicate with.
-            This is useful for implementing a serial spy to debug.
-
     Attributes:
         encoding: The default encoding to use for a command.  Defaults to
             'ascii'.
         lineending: The line ending character to use after each write command.
-            Defaults to '\n'.
+            Defaults to '\\n'.
         serial: The serial.Serial connection used for reading and writing to
             the device.
         address: The current address set on the controller
@@ -42,16 +34,27 @@ class GPIBController(object):
             The values are instances of GPIBInstrument subclasses.
         version:  The device version string.  Gets queried on each connection.
 
-    Raises:
-        serial.SerialException:  When a problem opening the serial port has
-            occurred.
     """
 
     encoding = 'ascii'
     lineending = '\n'
 
     def __init__(self, port, mode=None, connection=None):
-        """Constructor method."""
+        """
+        Constructor method.
+
+        Args:
+        port: The port to communicate with the serial device (ie
+            '/dev/ttyUSB0' on Linux or 'COM1' on Windows).
+        mode: Set the initial mode bit.  Accepts either 0 (DEVICE) or
+            1 (CONTROLLER).  Defaults to 1.
+        connection:  Optionally pass a serial object to communicate with.
+            This is useful for implementing a serial spy to debug.
+
+        Raises:
+        serial.SerialException:  When a problem opening the serial port has
+            occurred.
+        """
         if connection is not None:
             self.serial = connection
         else:
@@ -151,9 +154,10 @@ class GPIBController(object):
         the read will terminate at the same line ending characters that
         `readline` will look for.
 
-        Throws:
+        Raises:
             GPIBCommandError: When any of the expected error strings are read
                 back from the device.
+
         Returns:
             The lines read from the device
         """
@@ -244,30 +248,62 @@ class GPIBInstrument(object):
 
     Intended to be extended on a per instrument basis.
     This object maintains the code to interface effectively with the GPIBController object.
+
+    Attributes:
+        address: The GPIB Address for this instrument
+        name: The ID name of the instrument
+        connection: The connection object to read / write data to the
+            instrument.
     """
 
     ident_command = "*IDN?"
 
     def __init__(self, address=None, name=None, connection=None):
-        """Constructor.  Able to set state data such as GPIB address."""
+        """Constructor method.
+
+        Args:
+            address: The GPIB address the instrument is currently configured
+            name: An optional name to set for the instrument.  Defaults to
+                the value from the ident command.
+            connection: Assign the connection object at instantiation.
+
+        """
         self.address = address
         self.name = name
         self.connection = connection
 
     def write(self, command):
-        """Write a string to the device."""
+        """
+        Write a string to the device.
+
+        Args:
+            command: The command string to write.
+
+        """
         if self.connection is not None:
             if self.address != self.connection.address:
                 self.connection.set_address(self.address)
             self.connection.write(command)
 
     def set_address(self, address):
-        """Set the address property of the instrument."""
+        """
+        Set the address property of the instrument.
+
+        Args:
+            address: The GPIB address to assign to the instrument.  Must be
+                able to be represented as an integer.
+
+        """
         address = int(address)  # Force to int
         self.address = address
 
     def query_ident(self):
-        """Query the Identity Command.  Typically *IDN?."""
+        """
+        Query the Identity Command.
+
+        Returns:
+            The declared identity of this instrument.
+        """
         self.write(self.ident_command)
         resp = self.readline()
         if resp is not None:
@@ -275,11 +311,27 @@ class GPIBInstrument(object):
         return resp
 
     def read(self, n):
-        """Read from connected device."""
+        """
+        Read bytes from connected device.
+
+        If stop bit is encountered before number of bytes is reached, read is
+        ended early.
+
+        Args:
+            n: The integer number of bytes to read from the device.
+
+        Returns:
+            The decoded bytestring read from the device.
+        """
         if self.connection is not None:
             return self.connection.read(n)
 
     def readline(self):
-        """Read lines from connected device."""
+        """
+        Read a line from the connected device.
+
+        Returns:
+            The decoded bytestring read from the device
+        """
         if self.connection is not None:
             return self.connection.readline()

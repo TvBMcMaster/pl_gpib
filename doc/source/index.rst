@@ -9,9 +9,9 @@ Welcome to Prologix GPIB USB Library's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
-
+   modules
 
 Indices and tables
 ==================
