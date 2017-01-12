@@ -9,4 +9,5 @@ setup(name="Prologix GPIB USB Library",
       author='Tim van Boxtel',
       author_email='vanboxtj@mcmaster.ca',
       packages=['pl_gpib'],
+      install_requires=['PySerial']
       )

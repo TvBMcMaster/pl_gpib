@@ -6,7 +6,9 @@ It interacts briefly with the controller, querying and increasing its
 address by 2.
 """
 import serial
-import pl_gpib
+from pl_gpib import GPIBController, GPIBInstrument
+
+INSTRUMENT_PORT = 10
 
 
 def main():
@@ -17,16 +19,14 @@ def main():
         'spy://{port}?file={spy_file}'.format(
             port=port, spy_file=spy_file),
             timeout=1) as s:
-        c = pl_gpib.controller.GPIBController(port, connection=s)
+        c = GPIBController(port, connection=s)
         print("Device Connected: {}".format(c.version))
         print("Device Address: {}".format(c.address))
 
-        new_address = c.address + 2
+        inst = GPIBInstrument(address=INSTRUMENT_PORT)
 
-        c.set_address(new_address)
+        c.add_instrument(inst)
 
-        print("New Device Address: {}".format(c.address))
-
-
+        print("Instrument ID: {}".format(inst.name))
 if __name__ == '__main__':
     main()

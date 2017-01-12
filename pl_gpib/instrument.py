@@ -24,28 +24,50 @@ class GPIBInstrument(object):
         queries: Any class level query definitions are to be read from here
         base_queries: The common queries available to all instruments
         base_commands: The common commands available to all instruments.
+
+    Notes:
+        The commands and queries dict structure should be of the following form:
+
+        commands = {
+            'command_a': '*CMDA',
+            'command_b': '*CMDB'
+        }
+
+        queries = {
+            'query_a': '*CMDA',
+            'query_b': {'cmd': '*CMDB', read_bytes: 1024}
+        }
+
+        where the dict key is the name to use and the value is either a string
+        of the command text to use, or a dict with the following keys:
+
+            *cmd*
+            *read_bytes*
+
+        Read_bytes is used by the query read function to read back an
+        expected number of bytes from the query operation.
     """
 
     base_queries = {
-        'ident': QueryString('identification', '*IDN', 100),
-        'event_status_enable': QueryString('event_status_enable', '*ESE'),
-        'event_status_register': QueryString('event_status_register', '*ESR'),
-        'operation_complete': QueryString('operation_complete', '*OPC'),
-        'options': QueryString('options', '*OPT'),
-        'service_request_enable': QueryString('service_request_enable', '*SRE'),
-        'read_status_byte': QueryString('read_status_byte', '*STB'),
-        'self_test': QueryString('self_test', '*TST')
+        'ident': '*IDN',
+        'event_status_enable': '*ESE',
+        'event_status_register': '*ESR',
+        'operation_complete': '*OPC',
+        'options': '*OPT',
+        'service_request_enable': '*SRE',
+        'read_status_byte': '*STB',
+        'self_test': '*TST'
     }
 
     base_commands = {
-        'clear': CommandString('clear', '*CLS'),
-        'event_status_enable': CommandString('event_status_enable', '*ESE'),
-        'operation_complete': CommandString('operation_complete', '*OPC'),
-        'recall_instrument_setting': CommandString('recall_instrument_setting', '*RCL'),
-        'reset': CommandString('reset', '*RST'),
-        'save': CommandString('save', '*SAV'),
-        'service_request_enable': CommandString('service_request_enable', '*SRE'),
-        'wait': CommandString('wait', '*WAI')
+        'clear': '*CLS',
+        'event_status_enable': '*ESE',
+        'operation_complete': '*OPC',
+        'recall_instrument_setting': '*RCL',
+        'reset': '*RST',
+        'save': '*SAV',
+        'service_request_enable': '*SRE',
+        'wait': '*WAI'
     }
 
     queries = {}
@@ -66,52 +88,15 @@ class GPIBInstrument(object):
         self.query = CommandContainer(self)
         self.command = CommandContainer(self)
 
-        self._init_query()
-        self._init_command()
+        self.init_commands()
 
-    def _init_query(self):
-        """Initialize base and class queries."""
-        for query in self.base_queries.values():
-            self.query.add_command(query)
+    def init_commands(self):
+        """Initialize base and class queries and commands."""
+        self.query.add_commands(self.base_queries, query=True)
+        self.query.add_commands(self.queries, query=True)
 
-        for query in self.queries.values():
-            self.query.add_command(query)
-
-    def _init_command(self):
-        """Initialize base and class commands."""
-        for command in self.base_commands.values():
-            self.command.add_command(command)
-
-        for command in self.commands.values():
-            self.command.add_command(command)
-
-    def add_query(self, query):
-        """
-        Attach a query method to the query attribute object.
-
-        Args:
-            query: The QueryString instance holding the relevant state values
-
-        """
-        def _query(self, query, n=100):
-            self.write(query.command)
-            return self.read(n)
-
-        setattr(self.query, query.name, _query)
-
-    def add_command(self, command):
-        """
-        Attach a command method to the command attribute object.
-
-        Args:
-            command: The CommandString instnce holding the relevant state
-                values
-
-        """
-        def _command(self, command, *args):
-            self.write(command.command + " ".join([str(r) for r in args]))
-
-        setattr(self.command, command.name, _command)
+        self.command.add_commands(self.base_commands)
+        self.command.add_commands(self.commands)
 
     def add_connection(self, connection):
         """
@@ -129,7 +114,7 @@ class GPIBInstrument(object):
         ident = self.query.ident()
 
         if ident is not None:
-            self.name = ident
+            self.name = ident.decode(self.connection.encoding)
             return True
 
         return False

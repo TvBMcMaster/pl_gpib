@@ -7,9 +7,8 @@ Attributes:
     DEFAULT_ENCODING: The default module wide encoding to use
     DEFAULT_EOI: The default module wide EOI character to use
 """
+from .controller import GPIBController
+from .instrument import GPIBInstrument
+
 __version__ = 0.1
 __author__ = "Tim van Boxtel"
-
-DEFAULT_PORT = '/dev/ttyUSB0'
-DEFAULT_ENCODING = 'ascii'
-DEFAULT_EOI = "\n"

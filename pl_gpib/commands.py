@@ -83,6 +83,38 @@ class CommandContainer(object):
         self.commands = {}
         self.instrument = instrument
 
+    def add_commands(self, commands_dict, query=None):
+        """
+        Add command and query methods based on a dict of query data.
+
+        Args:
+            commands_dict:  A dict of command and query data.  Keys are the
+            query name, and values are either a simple string of command text,
+            or a list/tuple of extra data.
+
+        Examples:
+
+            q_data = {
+                'query_a': ':QRYA',
+                'query_b': (':QRYB', 200)
+            }
+            c.add_queries(q_data)
+
+        """
+        if query is True:
+            Command = QueryString
+        else:
+            Command = CommandString
+
+        for name, query_data in commands_dict.items():
+
+            if isinstance(query_data, str):
+                qry = Command(name, query_data)
+            else:
+                qry = Command(name, *query_data)
+
+            self.add_command(qry)
+
     def add_command(self, command):
         """
         Add a new command to the container.
@@ -97,7 +129,11 @@ class CommandContainer(object):
                 def wrapper(self, *args):
                     self.instrument.write(command(*args))
                     if isinstance(command, QueryString):
-                        self.instrument.read(command.read_bytes)
+                        if command.read_bytes < 0:
+                            resp = self.instrument.readline()
+                        else:
+                            resp = self.instrument.read(command.read_bytes)
+                        return resp
                 return wrapper
 
             setattr(self, command.name, MethodType(wrapped(self.instrument, command), self))

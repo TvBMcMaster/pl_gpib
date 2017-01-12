@@ -2,11 +2,17 @@
 GPIB Controller Module.
 
 Contains the main `GPIBController` class.
+
+Attributes:
+    DEFAULT_ENCODING: The default encoding to use for communication
+    DEFAULT_EOI: The default End or Identity (EOI) character to use
 """
 import serial
-from pl_gpib import DEFAULT_ENCODING, DEFAULT_EOI
-import pl_gpib.exc as exc
-from pl_gpib.instrument import GPIBInstrument
+from .exc import ERROR_MESSAGES, GPIBAddressInUseError
+from .instrument import GPIBInstrument
+
+DEFAULT_ENCODING = 'ascii'
+DEFAULT_EOI = '\n'
 
 
 class GPIBController(object):
@@ -110,7 +116,7 @@ class GPIBController(object):
                 address,
                 err_instrument
             )
-            raise exc.GPIBAddressInUseError(err_text)
+            raise GPIBAddressInUseError(err_text)
 
         if address != instrument.address:
             instrument.set_address(address)
@@ -147,8 +153,8 @@ class GPIBController(object):
         self.write("++read eoi")
         resp = self.serial.read(n).strip()
 
-        if resp in exc.ERROR_MESSAGES:
-            err = exc.ERROR_MESSAGES[resp]
+        if resp in ERROR_MESSAGES:
+            err = ERROR_MESSAGES[resp]
             raise err()
 
         return resp
@@ -176,8 +182,8 @@ class GPIBController(object):
 
         resp = self.serial.readline()
 
-        if resp in exc.ERROR_MESSAGES:
-            err = exc.ERROR_MESSAGES[resp]
+        if resp in ERROR_MESSAGES:
+            err = ERROR_MESSAGES[resp]
             raise err()
 
         return resp.strip()
