@@ -63,7 +63,7 @@ class GPIBController(object):
             self.serial = serial.Serial(port=port, baudrate=115200, timeout=1)
 
             # May throw a `serial.SerialException` if there's a problem
-            self.serial.open()
+            # self.serial.open()
 
         self.address = None  # Keep track of the instrument address
         self.mode = None  # Track the current mode setting of the device
@@ -81,7 +81,7 @@ class GPIBController(object):
 
         self.query_address()
 
-    def add_instrument(self, instrument, address):
+    def add_instrument(self, instrument, address=None):
         """
         Connect an instrument via its GPIB address.
 
@@ -90,13 +90,17 @@ class GPIBController(object):
 
         Args:
             instrument: The instrument instance to initialize
-            address: The GPIB address the instrument is set
+            address: The GPIB address the instrument is set.  This is optional
+                and will look at the instrument object itself if this attribute
+                is not set upon calling.
 
         Raises:
             TypeError: When the instrument begin added is not a child of
                 `GPIBInstrument`.
             GPIBAddressInUseError: When an address is already configured
         """
+        address = address or instrument.address
+        assert address is not None
         if not isinstance(instrument, GPIBInstrument):
             raise TypeError("Instrument must be a child of GPIBInstrument")
         address = int(address)
@@ -108,14 +112,11 @@ class GPIBController(object):
             )
             raise exc.GPIBAddressInUseError(err_text)
 
-        self.set_address(address)
-        instrument.connection = self
-        instrument.set_address(address)
+        if address != instrument.address:
+            instrument.set_address(address)
 
-        self.instruments[address] = instrument
-
-        # Attempt an Ident Ping to the instrument, be sure to fail gracefully
-        return instrument.query_ident()
+        if instrument.add_connection(self):
+            self.instruments[address] = instrument
 
     def write(self, command, encoding=None):
         """
