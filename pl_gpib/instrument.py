@@ -4,7 +4,7 @@ GPIB Instrument Module.
 All interfaced instruments should be a subclassed instance of this general
 Instrument class.
 """
-from pl_gpib.commands import QueryString, CommandString, CommandContainer
+from pl_gpib.commands import CommandContainer
 
 
 class GPIBInstrument(object):
@@ -12,40 +12,34 @@ class GPIBInstrument(object):
     Base GPIB Instrument Object.
 
     Intended to be extended on a per instrument basis.
-    This object maintains the code to interface effectively with the GPIBController object.
+    This object maintains the code to interface effectively with the
+    :py:class:`pl_gpib.controller.GPIBController` object.
 
     Attributes:
-        address: The GPIB Address for this instrument
-        name: The ID name of the instrument
-        connection: The connection object to read / write data to the
-            instrument.
-        query: An object holding supported query commands
-        command: An object holding supported commands
-        queries: Any class level query definitions are to be read from here
-        base_queries: The common queries available to all instruments
-        base_commands: The common commands available to all instruments.
+        queries (dict): Any class level query definitions are to be read from
+            here
+        commands (dict):  Any class level command definitions are to be defined here.
+        base_queries (dict): The common queries available to all instruments
+        base_commands (dict): The common commands available to all instruments.
 
     Notes:
         The commands and queries dict structure should be of the following form:
 
-        commands = {
-            'command_a': '*CMDA',
-            'command_b': '*CMDB'
-        }
+        .. code-block: python
+            commands = {
+                'command_a': '\*CMDA',
+                'command_b': '\*CMDB'
+            }
 
-        queries = {
-            'query_a': '*CMDA',
-            'query_b': {'cmd': '*CMDB', read_bytes: 1024}
-        }
+            queries = {
+                'query_a': '\*CMDA',
+                'query_b': ['\*CMDB',  1024]
+            }
 
         where the dict key is the name to use and the value is either a string
-        of the command text to use, or a dict with the following keys:
+        of the command text to use, or a list of arguments to pass to the
+        :py:class:`pl_gpib.commands.QueryString` object.:
 
-            *cmd*
-            *read_bytes*
-
-        Read_bytes is used by the query read function to read back an
-        expected number of bytes from the query operation.
     """
 
     base_queries = {
@@ -77,10 +71,12 @@ class GPIBInstrument(object):
         """Constructor method.
 
         Keyword Args:
-            address: The GPIB address the instrument is currently configured
-            name: An optional name to set for the instrument.  Defaults to
-                the value from the initial ident command.
-            connection: Assign the connection object at instantiation.
+            address (int): The GPIB address the instrument is currently
+                configured
+            name (str): An optional name to set for the instrument.
+                Defaults to the value from the initial ident command.
+            connection (GPIBController): Assign the connection object at
+                instantiation.
         """
         self.address = address
         self.name = name
@@ -88,9 +84,9 @@ class GPIBInstrument(object):
         self.query = CommandContainer(self)
         self.command = CommandContainer(self)
 
-        self.init_commands()
+        self._init_commands()
 
-    def init_commands(self):
+    def _init_commands(self):
         """Initialize base and class queries and commands."""
         self.query.add_commands(self.base_queries, query=True)
         self.query.add_commands(self.queries, query=True)
@@ -103,11 +99,10 @@ class GPIBInstrument(object):
         Add a new controller connection to this instrument instance.
 
         Args:
-            connection: The connection object to attach
+            connection (GPIBConnection): The connection object to attach
 
         Returns:
-            Boolean indicating connection was successful and identity was
-                successfully queried.
+            bool: On successful ident return
         """
         self.connection = connection
 
@@ -124,7 +119,7 @@ class GPIBInstrument(object):
         Write a string to the device.
 
         Args:
-            command: The command string to write.
+            command (str): The command string to write.
 
         """
         if self.connection is not None:
@@ -137,8 +132,7 @@ class GPIBInstrument(object):
         Set the address property of the instrument.
 
         Args:
-            address: The GPIB address to assign to the instrument.  Must be
-                able to be represented as an integer.
+            address (int): The GPIB address to assign to the instrument.
 
         """
         address = int(address)  # Force to int
@@ -152,10 +146,10 @@ class GPIBInstrument(object):
         ended early.
 
         Args:
-            n: The integer number of bytes to read from the device.
+            n (int): The integer number of bytes to read from the device.
 
         Returns:
-            The decoded bytestring read from the device.
+            bytes: The response read from the device.
         """
         if self.connection is not None:
             return self.connection.read(n)
@@ -165,7 +159,7 @@ class GPIBInstrument(object):
         Read a line from the connected device.
 
         Returns:
-            The decoded bytestring read from the device
+            bytes: The response read from the device
         """
         if self.connection is not None:
             return self.connection.readline()

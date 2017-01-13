@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 4
 
    intro
+   getting_started
    modules
 
 Indices and tables

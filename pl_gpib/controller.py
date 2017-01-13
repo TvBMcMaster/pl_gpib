@@ -25,41 +25,27 @@ class GPIBController(object):
     The class allows for many instruments to be added.  Each instrument must
     be a subclass of the GPIBInstrument object.
 
-    Attributes:
-        encoding: The default encoding to use for a command.  Defaults to
+    Args:
+        port (str): The serial device port connected to the physical
+            controller. `i.e.` '/dev/ttyUSB0' or 'COM1'
+
+    Keyword Arguments:
+        encoding (str): The default encoding to use for a command.  Defaults to
             'ascii'.
-        eoi_char: The line ending character to use after each write command.
-            Defaults to '\\n'.
-        serial: The serial.Serial connection used for reading and writing to
-            the device.
-        address: The current address set on the controller
-        mode: The current mode set on the controller
-        instruments: A dict of connected instruments indexed by address number.
-            The values are instances of GPIBInstrument subclasses.
-        version:  The device version string.  Gets queried on each connection.
+        eoi_char (str): The line ending character to use after each write
+        connection (GPIBController): A connection to immediately attach to
+            instrument
+        mode (int): The mode to set on the controller.  Set 0 for *DEVICE*
+            mode and 1 for *CONTROLLER* mode
+
+    Raises:
+        serial.SerialException:  When a problem opening the serial port has
+            occurred.
 
     """
 
     def __init__(self, port, mode=None, connection=None, encoding=None, eoi_char=None):
-        """
-        Constructor method.
-
-        Args:
-            port: The port to communicate with the serial device (ie
-                '/dev/ttyUSB0' on Linux or 'COM1' on Windows).
-            mode: Set the initial mode bit.  Accepts either 0 (DEVICE) or
-                1 (CONTROLLER).  Defaults to 1.
-            connection:  Optionally pass a serial object to communicate with.
-                This is useful for implementing a serial spy to debug.
-            encoding: Optional encoding to use for this device, defaults to module
-                wide default.
-            eoi_char: The character to use for indicating EOI.  Defaults to
-                project wide defaults.
-
-        Raises:
-            serial.SerialException:  When a problem opening the serial port has
-                occurred.
-        """
+        """Constructor method."""
         self.encoding = encoding or DEFAULT_ENCODING
         self.eoi_char = eoi_char or DEFAULT_EOI
 
@@ -95,15 +81,15 @@ class GPIBController(object):
         attempts to call the instrument for its ident ID.
 
         Args:
-            instrument: The instrument instance to initialize
-            address: The GPIB address the instrument is set.  This is optional
-                and will look at the instrument object itself if this attribute
-                is not set upon calling.
+            instrument (GPIBInstrument): The instrument instance to initialize
+            address (int): The GPIB address the instrument is set.  This is
+                optional and will look at the instrument object itself if this
+                attribute is not set upon calling.
 
         Raises:
             TypeError: When the instrument begin added is not a child of
-                `GPIBInstrument`.
-            GPIBAddressInUseError: When an address is already configured
+                :py:class:`~pl_gpib.instrument.GPIBInstrument`.
+            :py:class:`~pl_gpib.exc.GPIBAddressInUseError`: When an address is already configured
         """
         address = address or instrument.address
         assert address is not None
@@ -129,9 +115,9 @@ class GPIBController(object):
         Write general command to device.
 
         Args:
-            command: The command to write
-            encoding: Optional encoding to use for the command.  Defaults to
-                the attribute `encoding` on this class.
+            command (str): The command to write
+            encoding (str): Optional encoding to use for the command.
+                Defaults to the attribute `encoding` on this class.
 
         """
         encoding = encoding or self.encoding
@@ -142,13 +128,14 @@ class GPIBController(object):
         Read bytes from the serial connection.
 
         Args:
-            n: An integer number of bytes to read.
+            n (int): Number of bytes to read.
 
         Raises:
-            GPIBCommandError: When any of the expected error strings are read
-                back from the device.
+            :py:class:`~pl_gpib.exc.GPIBCommandError`: When any of the
+                expected error strings are read back from the device.
         Returns:
-            The string read from the device
+            str: The value read from the device
+
         """
         self.write("++read eoi")
         resp = self.serial.read(n).strip()
@@ -161,7 +148,7 @@ class GPIBController(object):
 
     def readline(self):
         """
-        Read until line ending from device.
+        Read until line end indicated from device.
 
         This is nice that it does not require the user to think about the
         approximate size of the result.  The drawback is that the result is
@@ -172,11 +159,12 @@ class GPIBController(object):
         `readline` will look for.
 
         Raises:
-            GPIBCommandError: When any of the expected error strings are read
-                back from the device.
+            :py:class:`~pl_gpib.exc.GPIBCommandError`: When any of the
+                expected error strings are read back from the device.
 
         Returns:
-            The lines read from the device
+            str: The line read from the device
+
         """
         self.write("++read eoi")
 
@@ -193,7 +181,7 @@ class GPIBController(object):
         Query the current GPIB address set on the controller.
 
         Returns:
-            The integer address currently set on the controller or None
+            int: The address currently set on the controller or None
         """
         self.write('++addr')
         address = self.read(10)
@@ -207,7 +195,8 @@ class GPIBController(object):
         Set the current GPIB address of the controller.
 
         Args:
-            address:  The address to set, must be convertable to an integer
+            address (int):  The address to set, must be convertable to an
+                integer
         """
         address = int(address)  # This forces only primary addresses
         self.write('++addr {}'.format(address))
@@ -217,11 +206,19 @@ class GPIBController(object):
         """
         Query the controller mode.
 
-        DEVICE: 0
-        CONTROLLER: 1
+        The controller mode is gives as:
+
+        +------------+--------+
+        |  Mode      |  Value |
+        +============+========+
+        | DEVICE     | 0      |
+        +------------+--------+
+        | CONTROLLER | 1      |
+        +------------+--------+
 
         Returns:
-            The mode integer the device is currently set as.  0 or 1
+            (int) The current mode of the controller
+
         """
         self.write('++mode')
         mode = self.read(1)
@@ -234,11 +231,16 @@ class GPIBController(object):
         """
         Set the controller mode.
 
-        DEVICE: 0
-        CONTROLLER: 1
+        +------------+--------+
+        |  Mode      |  Value |
+        +============+========+
+        | DEVICE     | 0      |
+        +------------+--------+
+        | CONTROLLER | 1      |
+        +------------+--------+
 
         Args:
-            mode: The integer mode to set the device.
+            mode (int): The mode to set the device.
 
         """
         mode = int(mode)  # Force to int
@@ -250,7 +252,7 @@ class GPIBController(object):
         Query the device version.
 
         Returns:
-            The version string
+            (str): The version string returned from the controller
         """
         self.write("++ver")
         resp = self.read(100)

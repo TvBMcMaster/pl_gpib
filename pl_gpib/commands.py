@@ -3,8 +3,12 @@ GPIB Commands Module.
 
 Base objects of commands and queries.  Mainly used as state objects for now,
 but functionality such as custom __call__ overrides might be useful.
+
 """
 from types import MethodType
+
+#: The default byte number to read after a query command
+DEFAULT_QUERY_READ = 100
 
 
 class CommandString(object):
@@ -12,8 +16,8 @@ class CommandString(object):
     Command String State Holder.
 
     Args:
-        name: The name of the command
-        command: The command text
+        name (str): The name of the command
+        command (str): The command text
     """
 
     def __init__(self, name, command):
@@ -22,16 +26,18 @@ class CommandString(object):
         self.command_text = command
 
     def __call__(self, *args):
-        """
+        r"""
         Construct the command text from called arguments.
 
         Simply converts all args to str and separates the command text plus
         args with spaces.
 
         Args:
-            *args: Variable positional arguments to be formatted into the
+            \*args: Variable positional arguments to be formatted into the
                 command text.
 
+        Returns:
+            str: The generated command text
         """
         command_args = [self.command_text]
         command_args.extend([str(a) for a in args])
@@ -46,9 +52,9 @@ class QueryString(CommandString):
      and values are read back after the write.
 
     Args:
-        name: The name of the command
-        command: The command text
-        read_bytes: Read this many bytes after issues the query.  Defaults to 100.
+        name (str): The name of the command
+        command (str): The command text
+        read_bytes (int): Optional number of bytes to read after query.
     """
 
     def __init__(self, *args, **kwargs):
@@ -57,7 +63,7 @@ class QueryString(CommandString):
         if len(args) > 2:
             self.read_bytes = args.pop(2)
         else:
-            self.read_bytes = 100
+            self.read_bytes = DEFAULT_QUERY_READ
 
         super(QueryString, self).__init__(*args)
 
@@ -66,6 +72,9 @@ class QueryString(CommandString):
         Query Command String call method.
 
         Query command does not take any arguments and appends a '?' to the command text.
+
+        Returns:
+            str: The query command text
         """
         return self.command_text + '?'
 
@@ -75,7 +84,7 @@ class CommandContainer(object):
     A Command Container object.  Useful for storing all command methods.
 
     Args:
-        instrument: The parent instrument of the commands.
+        instrument (GPIBInstrument): The parent instrument of the commands.
     """
 
     def __init__(self, instrument):
@@ -88,17 +97,21 @@ class CommandContainer(object):
         Add command and query methods based on a dict of query data.
 
         Args:
-            commands_dict:  A dict of command and query data.  Keys are the
-            query name, and values are either a simple string of command text,
-            or a list/tuple of extra data.
+            commands_dict (dict):  A dict of command and query data.  Keys are
+                the query name, and values are either a simple string of
+                command text, or a list/tuple of extra data.
+            query (bool): A flag to indicate the command is to be treated as
+                a query.
 
         Examples:
+            An example of adding a new custom query.
 
-            q_data = {
-                'query_a': ':QRYA',
-                'query_b': (':QRYB', 200)
-            }
-            c.add_queries(q_data)
+            .. code-block: python
+                q_data = {
+                    'query_a': ':QRYA',
+                    'query_b': (':QRYB', 200)
+                }
+                c.add_queries(q_data)
 
         """
         if query is True:
@@ -120,7 +133,9 @@ class CommandContainer(object):
         Add a new command to the container.
 
         Args:
-            command: The CommandString instance of the command to add.
+            command (CommandString): The
+                :py:class:`~pl_gpib.commands.CommandString` instance of the
+                command to add.
         """
         if command.name not in self.commands:
             self.commands[command.name] = command
@@ -138,21 +153,11 @@ class CommandContainer(object):
 
             setattr(self, command.name, MethodType(wrapped(self.instrument, command), self))
 
-    def remove_command(self, command):
-        """
-        Remove a command from this container.
-
-        Args:
-            command: The command name string to remove
-        """
-        if command in self.commands:
-            del self.commands[command]
-            delattr(self, command)
-
     def list_all(self):
         """
         List the callable methods on this object.
 
-        Returns: A sorted list of method names.
+        Returns:
+            list: A sorted list of method names.
         """
         return sorted(list(self.commands.keys()))

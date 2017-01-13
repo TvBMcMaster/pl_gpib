@@ -1,14 +1,11 @@
-"""pl_gpib.
-
-Easy OO Interface to working with Prologix GPIB-USB Controller.
-
-Attributes:
-    DEFAULT_PORT: The default port to connect
-    DEFAULT_ENCODING: The default module wide encoding to use
-    DEFAULT_EOI: The default module wide EOI character to use
-"""
+"""Easy Python interface for working with a Prologix GPIB-USB Controller."""
+import os
 from .controller import GPIBController
 from .instrument import GPIBInstrument
 
-__version__ = 0.1
+
+with open(os.path.join(os.path.dirname(__file__), os.pardir, 'VERSION')) as version_file:
+    version = version_file.read().strip()
+
+__version__ = version
 __author__ = "Tim van Boxtel"
